@@ -6,6 +6,43 @@ It combines a modern web UI with a secure local Windows agent so you can inspect
 
 ---
 
+## Quick Start
+
+If you just want to run NetPulse quickly:
+
+1. Clone and install
+```bash
+git clone https://github.com/Dionuk1/First-Repository-Net-Pulse-app.git
+cd First-Repository-Net-Pulse-app
+npm install
+cd local-agent
+npm install
+cd ..
+```
+
+2. Create `.env.local` in the project root
+```env
+NETPULSE_AGENT_URL=http://127.0.0.1:5055
+NETPULSE_TOKEN=change-me-local-token
+```
+
+3. Start the local agent (terminal 1)
+```bash
+cd local-agent
+npm run dev
+```
+
+4. Start the web app (terminal 2)
+```bash
+npm run dev
+```
+
+5. Open in browser
+- `http://localhost:3000`
+- Speed test page: `http://localhost:3000/speedtest`
+
+---
+
 ## What NetPulse Does
 
 NetPulse helps you:
