@@ -1,0 +1,52 @@
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
+
+import AppControls from "@/components/AppControls";
+import BottomNav from "@/components/BottomNav";
+import SidebarNav from "@/components/SidebarNav";
+import ThemeSync from "@/components/ThemeSync";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "NetPulse",
+  description: "Network monitoring dashboard",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable} min-h-screen text-[color:var(--np-text)]`}>
+        <ThemeSync />
+        <div className="min-h-screen px-4 py-4 md:px-6 md:py-6">
+          <div className="mx-auto w-full max-w-[430px] md:max-w-[1100px]">
+            <AppControls />
+          </div>
+          <div className="mx-auto w-full max-w-[430px] md:hidden" style={{ paddingBottom: "calc(7rem + env(safe-area-inset-bottom))" }}>{children}</div>
+
+          <div className="mx-auto hidden w-full max-w-[1100px] grid-cols-[250px_1fr] gap-6 md:grid">
+            <aside>
+              <SidebarNav />
+            </aside>
+            <main className="min-h-[calc(100vh-3rem)]">{children}</main>
+          </div>
+
+          <BottomNav />
+        </div>
+      </body>
+    </html>
+  );
+}

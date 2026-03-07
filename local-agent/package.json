@@ -1,0 +1,20 @@
+{
+  "name": "netpulse-local-agent",
+  "version": "1.0.0",
+  "private": true,
+  "description": "NetPulse Windows local agent (localhost:5055)",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js"
+  },
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.2"
+  }
+}

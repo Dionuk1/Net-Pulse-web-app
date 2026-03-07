@@ -1,0 +1,109 @@
+﻿@import "tailwindcss";
+
+:root {
+  --np-bg: #060d16;
+  --np-surface: #0b1422;
+  --np-card: #111c2d;
+  --np-border: #23364d;
+  --np-text: #e8f3ff;
+  --np-muted: #93a8c2;
+  --np-primary: #1ea7ff;
+  --np-accent: #1fd5a9;
+  --np-warn: #f2ba45;
+  --np-danger: #ef6672;
+  --np-primary-soft: #8fd7ff;
+  --background: var(--np-bg);
+  --foreground: var(--np-text);
+}
+
+[data-theme="light"] {
+  --np-bg: #eef4fb;
+  --np-surface: #ffffff;
+  --np-card: #ffffff;
+  --np-border: #d0ddec;
+  --np-text: #10233b;
+  --np-muted: #516987;
+  --np-primary: #0d84d8;
+  --np-accent: #0d9d78;
+  --np-warn: #b87c13;
+  --np-danger: #c24658;
+  --np-primary-soft: #0d84d8;
+  --background: var(--np-bg);
+  --foreground: var(--np-text);
+}
+
+[data-theme="light"] .text-white {
+  color: var(--np-text) !important;
+}
+
+[data-theme="light"] .text-white\/80 {
+  color: color-mix(in srgb, var(--np-text) 80%, transparent) !important;
+}
+
+[data-theme="light"] .text-white\/70 {
+  color: color-mix(in srgb, var(--np-text) 70%, transparent) !important;
+}
+
+[data-theme="light"] .text-white\/60 {
+  color: color-mix(in srgb, var(--np-text) 60%, transparent) !important;
+}
+
+[data-theme="light"] .text-white\/55 {
+  color: color-mix(in srgb, var(--np-text) 55%, transparent) !important;
+}
+
+[data-theme="light"] .text-white\/50 {
+  color: color-mix(in srgb, var(--np-text) 50%, transparent) !important;
+}
+
+[data-theme="light"] .text-white\/45 {
+  color: color-mix(in srgb, var(--np-text) 45%, transparent) !important;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--np-text);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  transition: background-color 180ms ease, color 180ms ease;
+  background:
+    radial-gradient(1200px 600px at 85% -20%, rgba(30, 167, 255, 0.15), transparent 60%),
+    radial-gradient(900px 500px at 10% -10%, rgba(31, 213, 169, 0.1), transparent 50%),
+    var(--np-bg);
+}
+
+@media print {
+  @page {
+    margin: 16mm;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #111111 !important;
+    font-size: 12pt;
+    line-height: 1.45;
+  }
+
+  .print-hide {
+    display: none !important;
+  }
+
+  .report-print,
+  .report-print * {
+    color: #111111 !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    border-color: #d9d9d9 !important;
+  }
+}
