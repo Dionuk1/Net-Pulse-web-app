@@ -13,43 +13,6 @@ It combines a modern web UI with a secure local Windows agent so you can inspect
 
 ---
 
-## Quick Start
-
-If you just want to run NetPulse quickly:
-
-1. Clone and install
-```bash
-git clone https://github.com/Dionuk1/First-Repository-Net-Pulse-app.git
-cd First-Repository-Net-Pulse-app
-npm install
-cd local-agent
-npm install
-cd ..
-```
-
-2. Create `.env.local` in the project root
-```env
-NETPULSE_AGENT_URL=http://127.0.0.1:5055
-NETPULSE_TOKEN=change-me-local-token
-```
-
-3. Start the local agent (terminal 1)
-```bash
-cd local-agent
-npm run dev
-```
-
-4. Start the web app (terminal 2)
-```bash
-npm run dev
-```
-
-5. Open in browser
-- `http://localhost:3000`
-- Speed test page: `http://localhost:3000/speedtest`
-
----
-
 ## What NetPulse Does
 
 NetPulse helps you:
@@ -224,41 +187,96 @@ Token required (`X-NETPULSE-TOKEN`):
 
 ---
 
+## Project Status
+
+- Active local development
+- Core features implemented and integrated
+- UI/animation iteration in progress
+- Windows-first runtime focus
+
+---
+
+## Why Local Agent?
+
+NetPulse uses a local agent to execute Windows network/system operations more safely and reliably than running all commands directly inside web routes.
+
+Benefits:
+- Keeps OS-level command execution isolated from UI logic
+- Centralizes command validation and allowlisting
+- Improves stability for Windows-specific tooling (scan/ping/terminal/network info)
+- Makes the web app cleaner by using proxy routes instead of command-heavy API handlers
+
+---
+
+## Security Notes
+
+- Agent binds to `127.0.0.1` only (localhost-only access)
+- Token header required for protected agent routes:
+  - `X-NETPULSE-TOKEN`
+- Terminal endpoint is command-allowlisted
+- Input validation and output sanitization are applied in agent routes
+- Basic rate limiting is enabled in the local agent
+- Keep `.env.local` private and never commit real tokens/secrets
+
+---
+
 ## Project Structure
 
 ```text
-netpulse-web/
-  app/
-    api/                  # Next.js API routes (proxy + app services)
-    activity/             # Activity page
-    devices/              # Devices page
-    report/               # Report page
-    settings/             # Settings page
-    speed/                # Speed page
-    speedtest/            # GO-style speedtest page
-    terminal/             # Terminal page
-    layout.tsx            # Root layout
-    page.tsx              # Home page
-  components/
-    GoSpeedtestButton.tsx # Animated GO button
-    RocketOverlay.tsx     # Premium rocket overlay animation
-    StarshipCanvas.tsx    # Canvas starship animation
-    ...                   # UI building blocks
-  lib/
-    api.ts                # Client API helpers
-    agentProxy.ts         # Server-to-agent proxy helpers
-    windowsNetwork.ts     # Windows network utilities/fallbacks
-    server/db.ts          # SQLite persistence
-    ...                   # i18n/settings/trust/activity logic
-  local-agent/
-    src/
-      index.ts            # Agent server entry
-      network.ts          # Network/scan handlers
-      terminal.ts         # Allowlisted terminal runner
-      oui.ts              # MAC vendor lookup
-    package.json
-  public/
-    animations/
+netpulse-web
+├─ app
+│  ├─ api
+│  │  ├─ activity/snapshot/route.ts
+│  │  ├─ network/info/route.ts
+│  │  ├─ ping/route.ts
+│  │  ├─ report/advanced/route.ts
+│  │  ├─ scan
+│  │  │  ├─ devices/route.ts
+│  │  │  ├─ os/route.ts
+│  │  │  ├─ ports/route.ts
+│  │  │  └─ vendor/route.ts
+│  │  ├─ speed/history/route.ts
+│  │  ├─ speed/ookla/route.ts
+│  │  ├─ speedtest/run/route.ts
+│  │  ├─ terminal/run/route.ts
+│  │  └─ trust/live/route.ts
+│  ├─ activity/page.tsx
+│  ├─ devices/page.tsx
+│  ├─ report/page.tsx
+│  ├─ settings/page.tsx
+│  ├─ speed/page.tsx
+│  ├─ speedtest/page.tsx
+│  ├─ terminal/page.tsx
+│  ├─ layout.tsx
+│  └─ page.tsx
+├─ components
+│  ├─ GoSpeedtestButton.tsx
+│  ├─ RocketOverlay.tsx
+│  ├─ StarshipCanvas.tsx
+│  ├─ AppControls.tsx
+│  ├─ SidebarNav.tsx
+│  └─ ...
+├─ lib
+│  ├─ api.ts
+│  ├─ agentProxy.ts
+│  ├─ windowsNetwork.ts
+│  ├─ trustScore.ts
+│  ├─ activityLogic.ts
+│  └─ server/db.ts
+├─ local-agent
+│  ├─ src
+│  │  ├─ index.ts
+│  │  ├─ network.ts
+│  │  ├─ terminal.ts
+│  │  ├─ oui.ts
+│  │  ├─ config.ts
+│  │  └─ utils.ts
+│  ├─ package.json
+│  └─ tsconfig.json
+├─ public
+│  └─ animations
+├─ package.json
+└─ README.md
 ```
 
 ---
