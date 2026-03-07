@@ -69,6 +69,7 @@ NetPulse helps you:
 - Home overview with live network/trust sections
 - Dark security-style UI
 - Language + theme controls
+- App UI language support: **English (`en`)** and **Albanian (`sq`)**
 
 ### Device & Activity Monitoring
 - Manual / scheduled local device scans
@@ -295,4 +296,6 @@ netpulse-web/
 
 ## License
 
-Private project repository. Add a license file if you plan public distribution.
+This project is licensed under the **MIT License**.
+
+See the [LICENSE](LICENSE) file for full details.
