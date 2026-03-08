@@ -1,4 +1,4 @@
-export const SUPPORTED_LANGUAGES = ["en", "sq"] as const;
+﻿export const SUPPORTED_LANGUAGES = ["en", "sq"] as const;
 
 export type AppLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 
@@ -10,9 +10,7 @@ export const languageLabel: Record<AppLanguage, string> = {
 type TranslationMap = {
   navHome: string;
   navDevices: string;
-  navActivity: string;
-  navTopology: string;
-  navSpeed: string;
+  navActivity: string;  navSpeed: string;
   navTerminal: string;
   navSettings: string;
   navigation: string;
@@ -41,9 +39,7 @@ export const translations: Record<AppLanguage, TranslationMap> = {
   en: {
     navHome: "Home",
     navDevices: "Devices",
-    navActivity: "Activity",
-    navTopology: "Topology",
-    navSpeed: "Speed",
+    navActivity: "Activity",    navSpeed: "Speed",
     navTerminal: "Terminal",
     navSettings: "Settings",
     navigation: "Navigation",
@@ -70,30 +66,29 @@ export const translations: Record<AppLanguage, TranslationMap> = {
   sq: {
     navHome: "Kreu",
     navDevices: "Pajisjet",
-    navActivity: "Aktiviteti",
-    navTopology: "Topologjia",
-    navSpeed: "Shpejtësia",
+    navActivity: "Aktiviteti",    navSpeed: "ShpejtÃ«sia",
     navTerminal: "Terminali",
-    navSettings: "Cilësimet",
+    navSettings: "CilÃ«simet",
     navigation: "Navigimi",
     homeTitle: "NetPulse",
     dashboardTitle: "Paneli i Rrjetit",
     refresh: "Rifresko",
-    wifiTrustScore: "Vlerësimi i Besimit Wi-Fi",
+    wifiTrustScore: "VlerÃ«simi i Besimit Wi-Fi",
     generateReport: "Gjenero Raportin",
-    live: "Në kohë reale",
+    live: "NÃ« kohÃ« reale",
     offlineFallback: "Modalitet fallback",
     loadingNetworkDetails: "Po ngarkohet informacioni i rrjetit...",
-    lastUpdated: "Përditësuar para",
-    settingsTitle: "Cilësimet",
+    lastUpdated: "PÃ«rditÃ«suar para",
+    settingsTitle: "CilÃ«simet",
     monitoring: "Monitorimi",
     appearance: "Pamja",
     language: "Gjuha",
     theme: "Tema",
-    darkMode: "Tema e errët",
-    lightMode: "Tema e çelët",
+    darkMode: "Tema e errÃ«t",
+    lightMode: "Tema e Ã§elÃ«t",
     about: "Rreth aplikacionit",
     scanInterval: "Intervali i Skanimit",
     notifications: "Njoftimet",
   },
 };
+
