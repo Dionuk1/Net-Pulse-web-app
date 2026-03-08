@@ -88,6 +88,14 @@ cd Net-Pulse-app
 ### Optional but recommended
 - Ookla Speedtest CLI (`speedtest.exe`)
 
+Speedtest CLI is not included in the repository.
+
+Download it from:
+https://www.speedtest.net/apps/cli
+
+After downloading, place the binary inside:
+`ookla-speedtest-1.2.0-win64/`
+
 NetPulse tries these locations automatically:
 1. `NETPULSE_SPEEDTEST_BIN` env var
 2. `./ookla-speedtest-1.2.0-win64/speedtest.exe`
