@@ -90,6 +90,13 @@ export type SpeedHistoryApiItem = {
   targetHost: string;
 };
 
+export type LiveBandwidthResponse = {
+  rxMbps: number;
+  txMbps: number;
+  interfaceAlias: string;
+  timestamp: string;
+};
+
 export type OoklaSpeedTestResponse = {
   timestamp: string;
   downloadMbps: number;
@@ -193,6 +200,10 @@ export async function fetchAdvancedReport(): Promise<AdvancedReportResponse> {
 
 export async function fetchSpeedHistory(): Promise<SpeedHistoryApiItem[]> {
   return requestJson<SpeedHistoryApiItem[]>("/api/speed/history");
+}
+
+export async function fetchLiveBandwidth(): Promise<LiveBandwidthResponse> {
+  return requestJson<LiveBandwidthResponse>("/api/speed/live");
 }
 
 export async function runOoklaSpeedTest(): Promise<OoklaSpeedTestResponse> {

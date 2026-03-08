@@ -6,6 +6,7 @@ import { RefreshCcw, Shield, Wifi } from "lucide-react";
 import AnimatedButton from "@/components/AnimatedButton";
 import Card from "@/components/Card";
 import CircularScore from "@/components/CircularScore";
+import LiveBandwidthWidget from "@/components/LiveBandwidthWidget";
 import ProgressBar from "@/components/ProgressBar";
 import { fetchActivitySnapshot, fetchNetworkInfo, fetchTrustLive, type NetworkInfoResponse, type TrustLiveResponse } from "@/lib/api";
 import useAutoRefresh from "@/lib/useAutoRefresh";
@@ -245,6 +246,8 @@ export default function HomePage() {
           </div>
         )}
       </Card>
+
+      <LiveBandwidthWidget />
 
       <AnimatedButton
         className="flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-lg font-semibold md:max-w-md"
