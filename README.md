@@ -1,6 +1,6 @@
-# NetPulse
+# RocketPing
 
-NetPulse is a **Windows-first local network monitoring dashboard** built with **Next.js (App Router)**, **TypeScript**, and **Tailwind CSS**.
+RocketPing is a **Windows-first local network monitoring dashboard** built with **Next.js (App Router)**, **TypeScript**, and **Tailwind CSS**.
 
 It combines a modern web UI with a secure local Windows agent so you can inspect your LAN, run speed tests, monitor activity, and generate reports from one place.
 
@@ -13,9 +13,9 @@ It combines a modern web UI with a secure local Windows agent so you can inspect
 
 ---
 
-## What NetPulse Does
+## What RocketPing Does
 
-NetPulse helps you:
+RocketPing helps you:
 - See live network details (SSID, local IP, gateway, DNS)
 - Scan local devices on your LAN
 - Track network activity and device state changes
@@ -51,7 +51,7 @@ NetPulse helps you:
 ### Local Agent (Windows)
 - Lightweight Node.js + TypeScript HTTP server
 - Binds to `127.0.0.1:5055`
-- Token-protected endpoints (`X-NETPULSE-TOKEN`)
+- Token-protected endpoints (`X-ROCKETPING-TOKEN`)
 - Rate limiting and localhost-only checks
 
 ---
