@@ -21,6 +21,22 @@ type AgentDevice = {
   openPorts?: number[];
 };
 
+let lastAgentUnreachableLogMs = 0;
+
+function logAgentFailure(message: string) {
+  const isUnreachable = /Local Agent is unreachable|fetch failed|ECONNREFUSED|ENOTFOUND|ETIMEDOUT/i.test(message);
+  if (!isUnreachable) {
+    console.error("[activity/snapshot] agent failed:", message);
+    return;
+  }
+
+  const now = Date.now();
+  if (now - lastAgentUnreachableLogMs > 60_000) {
+    console.warn("[activity/snapshot] agent unreachable, using fallback scanner.");
+    lastAgentUnreachableLogMs = now;
+  }
+}
+
 function suspiciousPortEvent(device: AgentDevice, timestamp: string): DbActivityEvent | null {
   const ports = device.openPorts ?? [];
   const suspicious = ports.find((port) => [22, 23, 3389, 445].includes(port));
@@ -65,7 +81,7 @@ export async function GET() {
       devices = payload.devices;
     } catch (agentError) {
       const message = agentError instanceof Error ? agentError.message : "Agent scan failed.";
-      console.error("[activity/snapshot] agent failed:", message);
+      logAgentFailure(message);
       devices = await scanDevicesFallback();
     }
 
