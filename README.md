@@ -97,7 +97,7 @@ After downloading, place the binary inside:
 `ookla-speedtest-1.2.0-win64/`
 
 NetPulse tries these locations automatically:
-1. `NETPULSE_SPEEDTEST_BIN` env var
+1. `ROCKETPING_SPEEDTEST_BIN` env var
 2. `./ookla-speedtest-1.2.0-win64/speedtest.exe`
 3. Any `./ookla-speedtest*/speedtest.exe`
 4. `C:\Tools\speedtest\speedtest.exe`
@@ -130,7 +130,7 @@ Create `.env.local` in project root:
 NETPULSE_AGENT_URL=http://127.0.0.1:5055
 NETPULSE_TOKEN=change-me-local-token
 # Optional:
-# NETPULSE_SPEEDTEST_BIN=C:\Path\To\speedtest.exe
+# ROCKETPING_SPEEDTEST_BIN=C:\Path\To\speedtest.exe
 ```
 
 The same token must be used by the local agent.
@@ -146,7 +146,7 @@ cd local-agent
 npm run dev
 ```
 
-### 2) Start NetPulse web app (terminal 2)
+### 2) Start RocketPing web app (terminal 2)
 
 ```bash
 npm run dev
@@ -220,7 +220,7 @@ Benefits:
 
 - Agent binds to `127.0.0.1` only (localhost-only access)
 - Token header required for protected agent routes:
-  - `X-NETPULSE-TOKEN`
+  - `X-ROCKETPING-TOKEN`
 - Terminal endpoint is command-allowlisted
 - Input validation and output sanitization are applied in agent routes
 - Basic rate limiting is enabled in the local agent
@@ -231,7 +231,7 @@ Benefits:
 ## Project Structure
 
 ```text
-netpulse-web
+rocketping-web-app
 |-- app
 |   |-- api
 |   |   |-- activity/snapshot/route.ts
@@ -295,7 +295,7 @@ netpulse-web
 - Restart dev server and hard refresh browser (`Ctrl+F5`).
 
 ### Speed test executable not found
-- Place `speedtest.exe` in one of supported paths, or set `NETPULSE_SPEEDTEST_BIN`.
+- Place `speedtest.exe` in one of supported paths, or set `ROCKETPING_SPEEDTEST_BIN`.
 
 ### Agent auth errors
 - Ensure `NETPULSE_TOKEN` in web app and local agent match exactly.
