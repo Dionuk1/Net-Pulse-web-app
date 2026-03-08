@@ -1,4 +1,5 @@
 import net from "node:net";
+import os from "node:os";
 import { PING_TIMEOUT_MS, SCAN_PING_CONCURRENCY } from "./config.js";
 import { isIPv4Address, isLocalIPv4, mapWithLimit, runCommand } from "./utils.js";
 import { lookupVendorByMac } from "./oui.js";
@@ -136,6 +137,29 @@ function scanPort(ip: string, port: number, timeoutMs = 700): Promise<boolean> {
   });
 }
 
+function getLocalIpFromOs(): string {
+  const interfaces = os.networkInterfaces();
+  for (const entries of Object.values(interfaces)) {
+    if (!entries) continue;
+    for (const entry of entries) {
+      if (entry.family !== "IPv4") continue;
+      if (entry.internal) continue;
+      if (!isIPv4Address(entry.address)) continue;
+      if (entry.address.startsWith("127.")) continue;
+      return entry.address;
+    }
+  }
+  return "";
+}
+
+async function getGatewayFromRoute(): Promise<string> {
+  const route = await runCommand("route", ["PRINT", "-4"], 5000);
+  if (!route.ok) return "";
+  const match = route.output.match(/^\s*0\.0\.0\.0\s+0\.0\.0\.0\s+(\d+\.\d+\.\d+\.\d+)/m);
+  if (!match) return "";
+  return isIPv4Address(match[1]) ? match[1] : "";
+}
+
 export async function getNetworkInfo(): Promise<NetworkInfo> {
   ensureWindows();
 
@@ -144,30 +168,37 @@ export async function getNetworkInfo(): Promise<NetworkInfo> {
 
   const psScript = `
 $cfg = Get-NetIPConfiguration |
-  Where-Object { $_.NetAdapter.Status -eq 'Up' -and $_.IPv4Address -ne $null -and $_.IPv4DefaultGateway -ne $null } |
+  Where-Object { $_.NetAdapter.Status -eq 'Up' -and $_.IPv4Address -ne $null } |
   Sort-Object -Property InterfaceMetric |
   Select-Object -First 1;
-if ($null -eq $cfg) { throw "No active IPv4 adapter with gateway found."; }
+if ($null -eq $cfg) {
+  [pscustomobject]@{ localIp = ""; gateway = ""; dns = @() } | ConvertTo-Json -Compress
+  exit 0
+}
 $ip = $cfg.IPv4Address.IPAddress | Select-Object -First 1;
-$gw = $cfg.IPv4DefaultGateway.NextHop;
+$gw = "";
+if ($cfg.IPv4DefaultGateway -ne $null) { $gw = $cfg.IPv4DefaultGateway.NextHop; }
 $dns = @();
 try { $dns = (Get-DnsClientServerAddress -InterfaceIndex $cfg.InterfaceIndex -AddressFamily IPv4).ServerAddresses } catch { }
 [pscustomobject]@{ localIp = $ip; gateway = $gw; dns = $dns } | ConvertTo-Json -Compress
 `.trim();
 
   const configRaw = await runCommand("powershell.exe", ["-NoProfile", "-Command", psScript], 7000);
-  if (!configRaw.ok) {
-    throw new Error(configRaw.output || "Failed to get active network adapter.");
+  let parsed: { localIp?: string; gateway?: string; dns?: string[] } = {};
+  if (configRaw.ok) {
+    try {
+      parsed = JSON.parse(configRaw.output || "{}") as { localIp?: string; gateway?: string; dns?: string[] };
+    } catch {
+      parsed = {};
+    }
   }
 
-  const parsed = JSON.parse(configRaw.output || "{}") as { localIp?: string; gateway?: string; dns?: string[] };
-  const localIp = parsed.localIp ?? "";
-  const gateway = parsed.gateway ?? "";
+  const localIpFromPs = (parsed.localIp || "").trim();
+  const gatewayFromPs = (parsed.gateway || "").trim();
   const dns = Array.isArray(parsed.dns) ? parsed.dns.filter(isIPv4Address) : [];
 
-  if (!isIPv4Address(localIp) || !isIPv4Address(gateway)) {
-    throw new Error("Unable to resolve local IPv4 and gateway.");
-  }
+  const localIp = isIPv4Address(localIpFromPs) ? localIpFromPs : getLocalIpFromOs();
+  const gateway = isIPv4Address(gatewayFromPs) ? gatewayFromPs : await getGatewayFromRoute();
 
   return { ssid, localIp, gateway, dns };
 }

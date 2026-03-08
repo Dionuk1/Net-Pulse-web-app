@@ -24,7 +24,7 @@ export async function GET() {
     return NextResponse.json({
       ssid: "Unknown Network",
       localIp: "0.0.0.0",
-      gateway: "1.1.1.1",
+      gateway: "",
       dnsServers: [],
       error: message,
     });

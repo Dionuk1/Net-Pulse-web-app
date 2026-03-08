@@ -1,4 +1,5 @@
 ﻿import { execFile } from "node:child_process";
+import os from "node:os";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
@@ -13,7 +14,7 @@ export type NetworkInfo = {
 export type ScannedDevice = {
   ip: string;
   mac: string;
-  seen: boolean; // ✅ FIX
+  seen: boolean; // ? FIX
   online: boolean;
   latencyMs: number | null;
   reason?: string;
@@ -144,7 +145,7 @@ export async function getNetworkInfo(): Promise<NetworkInfo> {
   const fallback: NetworkInfo = {
     ssid: "Unknown",
     localIp: "0.0.0.0",
-    gateway: "1.1.1.1",
+    gateway: "",
     dnsServers: [],
   };
 
@@ -165,14 +166,22 @@ export async function getNetworkInfo(): Promise<NetworkInfo> {
   // Zgjedh adapterin aktiv me gateway (Ethernet ose Wi-Fi)
   const psScript = `
 $cfg = Get-NetIPConfiguration |
-  Where-Object { $_.NetAdapter.Status -eq 'Up' -and $_.IPv4Address -ne $null -and $_.IPv4DefaultGateway -ne $null } |
+  Where-Object { $_.NetAdapter.Status -eq 'Up' -and $_.IPv4Address -ne $null } |
   Sort-Object -Property InterfaceMetric |
   Select-Object -First 1;
 
-if ($null -eq $cfg) { throw "No active IPv4 adapter with a default gateway found."; }
+if ($null -eq $cfg) {
+  [pscustomobject]@{
+    localIp    = ""
+    gateway    = ""
+    dnsServers = @()
+  } | ConvertTo-Json -Compress
+  exit 0
+}
 
 $ip = $cfg.IPv4Address.IPAddress | Select-Object -First 1;
-$gw = $cfg.IPv4DefaultGateway.NextHop;
+$gw = "";
+if ($cfg.IPv4DefaultGateway -ne $null) { $gw = $cfg.IPv4DefaultGateway.NextHop; }
 
 $dns = @();
 try {
@@ -202,12 +211,32 @@ try {
     return { ...fallback, ssid };
   }
 
-  const localIp = parsed.localIp ?? "";
-  const gateway = parsed.gateway ?? "";
+  let localIp = parsed.localIp ?? "";
+  let gateway = parsed.gateway ?? "";
   const dnsServers = (parsed.dnsServers ?? []).filter(isIPv4Address);
 
-  if (!isIPv4Address(localIp) || !isIPv4Address(gateway)) {
-    return { ...fallback, ssid };
+  if (!isIPv4Address(localIp)) {
+    const interfaces = os.networkInterfaces();
+    for (const entries of Object.values(interfaces)) {
+      if (!entries) continue;
+      for (const entry of entries) {
+        if (entry.family !== "IPv4" || entry.internal) continue;
+        if (!isIPv4Address(entry.address)) continue;
+        localIp = entry.address;
+        break;
+      }
+      if (isIPv4Address(localIp)) break;
+    }
+  }
+
+  if (!isIPv4Address(gateway)) {
+    const routeRaw = await runCommand("route", ["PRINT", "-4"], 5000).catch(() => "");
+    const match = routeRaw.match(/^\s*0\.0\.0\.0\s+0\.0\.0\.0\s+(\d+\.\d+\.\d+\.\d+)/m);
+    gateway = match && isIPv4Address(match[1]) ? match[1] : "";
+  }
+
+  if (!isIPv4Address(localIp)) {
+    return { ...fallback, ssid, gateway };
   }
 
   return { ssid, localIp, gateway, dnsServers };
@@ -285,3 +314,4 @@ export async function resolveNetBiosName(ip: string): Promise<string | null> {
 
   return null;
 }
+
