@@ -1,4 +1,4 @@
-﻿import { execFile } from "node:child_process";
+import { execFile } from "node:child_process";
 import os from "node:os";
 import { promisify } from "node:util";
 
@@ -14,12 +14,16 @@ export type NetworkInfo = {
 export type ScannedDevice = {
   ip: string;
   mac: string;
-  seen: boolean; // ? FIX
+  seen: boolean;
   online: boolean;
   latencyMs: number | null;
   reason?: string;
 };
 
+const DISCOVERY_SWEEP_INTERVAL_MS = 5 * 60_000;
+const DISCOVERY_PING_CONCURRENCY = 10;
+const DISCOVERY_PING_TIMEOUT_MS = 900;
+const subnetSweepAt = new Map<string, number>();
 
 function ensureWindows() {
   if (process.platform !== "win32") {
@@ -42,8 +46,6 @@ async function runCommand(
 
 function parseSsid(output: string): string {
   const lines = output.split(/\r?\n/);
-
-  // match: SSID                   : MyWifi
   for (const raw of lines) {
     const m = raw.match(/^\s*SSID\s*:\s*(.+)\s*$/i);
     if (m && !/BSSID/i.test(raw)) {
@@ -51,7 +53,6 @@ function parseSsid(output: string): string {
       if (val && val.toLowerCase() !== "n/a") return val;
     }
   }
-
   return "Unknown";
 }
 
@@ -78,7 +79,7 @@ export function isLocalIPv4(ip: string): boolean {
   if (a === 10) return true;
   if (a === 172 && b >= 16 && b <= 31) return true;
   if (a === 192 && b === 168) return true;
-  if (a === 169 && b === 254) return true; // link-local
+  if (a === 169 && b === 254) return true;
 
   return false;
 }
@@ -88,9 +89,7 @@ function parseArpEntries(output: string): Array<{ ip: string; mac: string }> {
   const results: Array<{ ip: string; mac: string }> = [];
 
   for (const line of lines) {
-    const match = line.match(
-      /\s*(\d+\.\d+\.\d+\.\d+)\s+([0-9a-fA-F-]{17})\s+\w+/,
-    );
+    const match = line.match(/\s*(\d+\.\d+\.\d+\.\d+)\s+([0-9a-fA-F-]{17})\s+\w+/);
     if (!match) continue;
 
     const ip = match[1];
@@ -122,6 +121,84 @@ function parsePingLatency(output: string): { online: boolean; latencyMs: number 
   if (avg) return { online: true, latencyMs: Number(avg[1]) };
 
   return { online: true, latencyMs: null };
+}
+
+function subnetPrefix(ip: string): string {
+  const parts = ip.split(".");
+  if (parts.length !== 4) return "";
+  return `${parts[0]}.${parts[1]}.${parts[2]}`;
+}
+
+function getLocalPrivateIpsFromOs(): string[] {
+  const interfaces = os.networkInterfaces();
+  const ips = new Set<string>();
+
+  for (const entries of Object.values(interfaces)) {
+    if (!entries) continue;
+    for (const entry of entries) {
+      if (entry.family !== "IPv4") continue;
+      if (entry.internal) continue;
+      if (!isLocalIPv4(entry.address)) continue;
+      ips.add(entry.address);
+    }
+  }
+
+  return [...ips];
+}
+
+function buildDiscoveryTargets(localIp: string, gateway: string, knownIps: Set<string>): string[] {
+  const prefix = subnetPrefix(localIp);
+  if (!prefix) return [];
+
+  const targets: string[] = [];
+  for (let host = 1; host <= 254; host += 1) {
+    const ip = `${prefix}.${host}`;
+    if (ip === localIp || ip === gateway) continue;
+    if (knownIps.has(ip)) continue;
+    targets.push(ip);
+  }
+
+  return targets;
+}
+
+async function mapWithLimit<T, R>(
+  items: T[],
+  limit: number,
+  mapper: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let nextIndex = 0;
+
+  async function worker() {
+    while (true) {
+      const index = nextIndex;
+      nextIndex += 1;
+      if (index >= items.length) break;
+      results[index] = await mapper(items[index]);
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(limit, Math.max(items.length, 1)) }, () => worker());
+  await Promise.all(workers);
+  return results;
+}
+
+async function warmArpDiscovery(localIp: string, gateway: string, knownIps: Set<string>): Promise<void> {
+  const prefix = subnetPrefix(localIp);
+  if (!prefix) return;
+
+  const now = Date.now();
+  const last = subnetSweepAt.get(prefix) ?? 0;
+  if (now - last < DISCOVERY_SWEEP_INTERVAL_MS) return;
+  subnetSweepAt.set(prefix, now);
+
+  const targets = buildDiscoveryTargets(localIp, gateway, knownIps);
+  if (targets.length === 0) return;
+
+  await mapWithLimit(targets, DISCOVERY_PING_CONCURRENCY, async (target) => {
+    await runCommand("ping", ["-n", "1", "-w", "250", target], DISCOVERY_PING_TIMEOUT_MS).catch(() => "");
+    return 0;
+  });
 }
 
 export async function pingHost(ip: string): Promise<{ online: boolean; latencyMs: number | null }> {
@@ -156,43 +233,25 @@ export async function getNetworkInfo(): Promise<NetworkInfo> {
     };
   }
 
-  // Wi-Fi SSID (vetëm nëse je lidh me Wi-Fi)
   const ssidRaw = await runCommand("netsh", ["wlan", "show", "interfaces"], 7000).catch(() => "");
   const ssidParsed = parseSsid(ssidRaw);
-
-  // Nëse Wi-Fi është disconnected ose nuk ka SSID -> konsideroje Ethernet
   const ssid = ssidParsed === "Unknown" ? "Wired (Ethernet)" : ssidParsed;
 
-  // Zgjedh adapterin aktiv me gateway (Ethernet ose Wi-Fi)
   const psScript = `
 $cfg = Get-NetIPConfiguration |
   Where-Object { $_.NetAdapter.Status -eq 'Up' -and $_.IPv4Address -ne $null } |
   Sort-Object -Property InterfaceMetric |
   Select-Object -First 1;
-
 if ($null -eq $cfg) {
-  [pscustomobject]@{
-    localIp    = ""
-    gateway    = ""
-    dnsServers = @()
-  } | ConvertTo-Json -Compress
+  [pscustomobject]@{ localIp = ""; gateway = ""; dnsServers = @() } | ConvertTo-Json -Compress
   exit 0
 }
-
 $ip = $cfg.IPv4Address.IPAddress | Select-Object -First 1;
 $gw = "";
 if ($cfg.IPv4DefaultGateway -ne $null) { $gw = $cfg.IPv4DefaultGateway.NextHop; }
-
 $dns = @();
-try {
-  $dns = (Get-DnsClientServerAddress -InterfaceIndex $cfg.InterfaceIndex -AddressFamily IPv4).ServerAddresses
-} catch { }
-
-[pscustomobject]@{
-  localIp    = $ip
-  gateway    = $gw
-  dnsServers = $dns
-} | ConvertTo-Json -Compress
+try { $dns = (Get-DnsClientServerAddress -InterfaceIndex $cfg.InterfaceIndex -AddressFamily IPv4).ServerAddresses } catch { }
+[pscustomobject]@{ localIp = $ip; gateway = $gw; dnsServers = $dns } | ConvertTo-Json -Compress
 `.trim();
 
   const configRaw = await runCommand("powershell.exe", ["-NoProfile", "-Command", psScript], 7000).catch(() => "");
@@ -216,17 +275,8 @@ try {
   const dnsServers = (parsed.dnsServers ?? []).filter(isIPv4Address);
 
   if (!isIPv4Address(localIp)) {
-    const interfaces = os.networkInterfaces();
-    for (const entries of Object.values(interfaces)) {
-      if (!entries) continue;
-      for (const entry of entries) {
-        if (entry.family !== "IPv4" || entry.internal) continue;
-        if (!isIPv4Address(entry.address)) continue;
-        localIp = entry.address;
-        break;
-      }
-      if (isIPv4Address(localIp)) break;
-    }
+    const localCandidates = getLocalPrivateIpsFromOs();
+    localIp = localCandidates[0] ?? "";
   }
 
   if (!isIPv4Address(gateway)) {
@@ -242,33 +292,27 @@ try {
   return { ssid, localIp, gateway, dnsServers };
 }
 
-async function mapWithLimit<T, R>(
-  items: T[],
-  limit: number,
-  mapper: (item: T) => Promise<R>,
-): Promise<R[]> {
-  const results: R[] = new Array(items.length);
-  let nextIndex = 0;
-
-  async function worker() {
-    while (true) {
-      const index = nextIndex;
-      nextIndex += 1;
-      if (index >= items.length) break;
-      results[index] = await mapper(items[index]);
-    }
-  }
-
-  const workers = Array.from({ length: Math.min(limit, Math.max(items.length, 1)) }, () => worker());
-  await Promise.all(workers);
-  return results;
-}
-
 export async function scanArpDevices(): Promise<ScannedDevice[]> {
   ensureWindows();
 
-  const arpRaw = await runCommand("arp", ["-a"], 7000);
-  const entries = parseArpEntries(arpRaw);
+  let arpRaw = await runCommand("arp", ["-a"], 7000);
+  let entries = parseArpEntries(arpRaw);
+
+  try {
+    const info = await getNetworkInfo();
+    const knownIps = new Set(entries.map((entry) => entry.ip));
+    const localIps = getLocalPrivateIpsFromOs();
+
+    for (const localIp of localIps) {
+      const sameSubnetGateway = subnetPrefix(localIp) === subnetPrefix(info.gateway) ? info.gateway : "";
+      await warmArpDiscovery(localIp, sameSubnetGateway, knownIps);
+    }
+
+    arpRaw = await runCommand("arp", ["-a"], 7000);
+    entries = parseArpEntries(arpRaw);
+  } catch {
+    // keep ARP-only results if discovery phase fails
+  }
 
   const scanned = await mapWithLimit(entries, 10, async (entry) => {
     const ping = await pingHost(entry.ip).catch(() => ({ online: false, latencyMs: null }));
@@ -296,7 +340,10 @@ export async function resolveNetBiosName(ip: string): Promise<string | null> {
 
   try {
     const output = await runCommand("nbtstat", ["-A", ip], 4000);
-    const lines = output.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    const lines = output
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
 
     for (const line of lines) {
       if (!/<00>\s+UNIQUE/i.test(line)) {
@@ -314,4 +361,3 @@ export async function resolveNetBiosName(ip: string): Promise<string | null> {
 
   return null;
 }
-

@@ -97,13 +97,33 @@ export default function ActivityPage() {
   }, [devices, settings.showOfflineDevices, showOnlyOnline]);
 
   const filteredEvents = useMemo(() => {
-    if (eventFilter === "all") return events;
-    return events.filter((event) => event.type === eventFilter);
-  }, [eventFilter, events]);
+    const base = eventFilter === "all" ? events : events.filter((event) => event.type === eventFilter);
+    if (!showOnlyOnline) {
+      return base;
+    }
+
+    const onlineIps = new Set(
+      devices
+        .filter((device) => device.online)
+        .map((device) => device.ip),
+    );
+
+    return base.filter((event) => {
+      if (event.type === "came_online" || event.type === "latency_spike" || event.type === "security_alert") {
+        return true;
+      }
+      for (const ip of onlineIps) {
+        if (event.details.includes(ip) || event.deviceLabel.includes(ip)) {
+          return true;
+        }
+      }
+      return false;
+    });
+  }, [devices, eventFilter, events, showOnlyOnline]);
 
   const onlineCount = devices.filter((device) => device.online).length;
-  const totalCount = devices.length;
-  const offlineCount = Math.max(0, totalCount - onlineCount);
+  const totalCount = showOnlyOnline ? onlineCount : devices.length;
+  const offlineCount = showOnlyOnline ? 0 : Math.max(0, devices.length - onlineCount);
 
   return (
     <main className="space-y-4 pb-4 md:space-y-6 md:pb-8">

@@ -39,6 +39,11 @@ const COMMON_PORTS: Array<{ port: number; service: string }> = [
   { port: 3389, service: "rdp" },
 ];
 
+const DISCOVERY_SWEEP_INTERVAL_MS = 5 * 60_000;
+const DISCOVERY_PING_CONCURRENCY = 12;
+const DISCOVERY_PING_TIMEOUT_MS = 900;
+const subnetSweepAt = new Map<string, number>();
+
 function ensureWindows(): void {
   if (process.platform !== "win32") {
     throw new Error("Agent endpoints are Windows-only.");
@@ -152,12 +157,64 @@ function getLocalIpFromOs(): string {
   return "";
 }
 
+function getLocalPrivateIpsFromOs(): string[] {
+  const interfaces = os.networkInterfaces();
+  const ips = new Set<string>();
+  for (const entries of Object.values(interfaces)) {
+    if (!entries) continue;
+    for (const entry of entries) {
+      if (entry.family !== "IPv4") continue;
+      if (entry.internal) continue;
+      if (!isLocalIPv4(entry.address)) continue;
+      ips.add(entry.address);
+    }
+  }
+  return [...ips];
+}
+
 async function getGatewayFromRoute(): Promise<string> {
   const route = await runCommand("route", ["PRINT", "-4"], 5000);
   if (!route.ok) return "";
   const match = route.output.match(/^\s*0\.0\.0\.0\s+0\.0\.0\.0\s+(\d+\.\d+\.\d+\.\d+)/m);
   if (!match) return "";
   return isIPv4Address(match[1]) ? match[1] : "";
+}
+
+function subnetPrefix(ip: string): string {
+  const parts = ip.split(".");
+  if (parts.length !== 4) return "";
+  return `${parts[0]}.${parts[1]}.${parts[2]}`;
+}
+
+function buildDiscoveryTargets(localIp: string, gateway: string, knownIps: Set<string>): string[] {
+  const prefix = subnetPrefix(localIp);
+  if (!prefix) return [];
+  const targets: string[] = [];
+  for (let host = 1; host <= 254; host += 1) {
+    const ip = `${prefix}.${host}`;
+    if (ip === localIp || ip === gateway) continue;
+    if (knownIps.has(ip)) continue;
+    targets.push(ip);
+  }
+  return targets;
+}
+
+async function warmArpDiscovery(localIp: string, gateway: string, knownIps: Set<string>): Promise<void> {
+  const prefix = subnetPrefix(localIp);
+  if (!prefix) return;
+
+  const now = Date.now();
+  const last = subnetSweepAt.get(prefix) ?? 0;
+  if (now - last < DISCOVERY_SWEEP_INTERVAL_MS) return;
+  subnetSweepAt.set(prefix, now);
+
+  const targets = buildDiscoveryTargets(localIp, gateway, knownIps);
+  if (targets.length === 0) return;
+
+  await mapWithLimit(targets, DISCOVERY_PING_CONCURRENCY, async (target) => {
+    await runCommand("ping", ["-n", "1", "-w", "250", target], DISCOVERY_PING_TIMEOUT_MS);
+    return 0;
+  });
 }
 
 export async function getNetworkInfo(): Promise<NetworkInfo> {
@@ -260,10 +317,26 @@ export function scanVendor(mac: string): { mac: string; vendor: string } {
 
 export async function scanDevices(): Promise<DeviceScanItem[]> {
   ensureWindows();
-  const arp = await runCommand("arp", ["-a"], 7000);
+  let arp = await runCommand("arp", ["-a"], 7000);
   if (!arp.ok) throw new Error(arp.output || "arp -a failed.");
 
-  const entries = parseArpEntries(arp.output);
+  let entries = parseArpEntries(arp.output);
+  try {
+    const info = await getNetworkInfo();
+    const knownIps = new Set(entries.map((entry) => entry.ip));
+    const localIps = getLocalPrivateIpsFromOs();
+    for (const localIp of localIps) {
+      const sameSubnetGateway = subnetPrefix(localIp) === subnetPrefix(info.gateway) ? info.gateway : "";
+      await warmArpDiscovery(localIp, sameSubnetGateway, knownIps);
+    }
+    arp = await runCommand("arp", ["-a"], 7000);
+    if (arp.ok) {
+      entries = parseArpEntries(arp.output);
+    }
+  } catch {
+    // keep ARP-only results on discovery failure
+  }
+
   const results = await mapWithLimit(entries, SCAN_PING_CONCURRENCY, async (entry) => {
     const ping = await pingHost(entry.ip).catch(() => ({ online: false, latencyMs: null, ttl: null }));
     const osGuess = guessOsFromTtl(ping.ttl);
