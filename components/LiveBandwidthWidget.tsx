@@ -30,7 +30,7 @@ export default function LiveBandwidthWidget() {
   const isSq = settings.language === "sq";
   const ui = isSq
     ? {
-        title: "Monitorimi i Gjerësisë së Bandës në Kohë Reale",
+        title: "Monitorimi i Trafikut të Rrjetit në Kohë Reale",
         detecting: "Po zbulohet adaptori...",
         download: "Download",
         upload: "Upload",
