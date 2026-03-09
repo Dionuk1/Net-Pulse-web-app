@@ -16,9 +16,10 @@ export default function BrandLogo({ compact = false, className = "" }: BrandLogo
       <Image
         src="/branding/rocketping-mark.svg"
         alt="RocketPing"
-        width={36}
-        height={36}
+        width={44}
+        height={44}
         className={className}
+        unoptimized
         priority
       />
     );
@@ -33,6 +34,7 @@ export default function BrandLogo({ compact = false, className = "" }: BrandLogo
           width={40}
           height={40}
           className="h-10 w-10 rounded-2xl border border-[color:var(--np-border)] bg-[color:var(--np-surface)] p-1 shadow-[var(--np-shadow-soft)]"
+          unoptimized
           priority
         />
         <span className="text-2xl font-semibold tracking-[-0.02em] text-[color:var(--np-text)]">
@@ -49,6 +51,7 @@ export default function BrandLogo({ compact = false, className = "" }: BrandLogo
       width={260}
       height={70}
       className={className}
+      unoptimized
       priority
     />
   );

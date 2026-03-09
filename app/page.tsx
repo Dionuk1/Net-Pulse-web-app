@@ -9,6 +9,7 @@ import Card from "@/components/Card";
 import CircularScore from "@/components/CircularScore";
 import LiveBandwidthWidget from "@/components/LiveBandwidthWidget";
 import ProgressBar from "@/components/ProgressBar";
+import { translateActivityDetails } from "@/lib/activityText";
 import { fetchActivitySnapshot, fetchNetworkInfo, fetchTrustLive, type NetworkInfoResponse, type TrustLiveResponse } from "@/lib/api";
 import useAutoRefresh from "@/lib/useAutoRefresh";
 import useI18n from "@/lib/useI18n";
@@ -278,7 +279,7 @@ export default function HomePage() {
             {warnings.map((warning) => (
               <div key={warning.id} className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2">
                 <p className="text-sm font-semibold text-red-300">{warning.deviceLabel}</p>
-                <p className="text-xs text-red-200/90">{warning.details}</p>
+                <p className="text-xs text-red-200/90">{translateActivityDetails(warning.details, isSq)}</p>
                 <p className="mt-1 text-[11px] text-red-200/70">{new Date(warning.timestamp).toLocaleTimeString()}</p>
               </div>
             ))}

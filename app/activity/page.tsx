@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AnimatedButton from "@/components/AnimatedButton";
 import Card from "@/components/Card";
 import { Activity, Filter, RefreshCcw } from "lucide-react";
+import { getActivityEventLabel, translateActivityDetails } from "@/lib/activityText";
 import { fetchActivitySnapshot, type ActivityDevice } from "@/lib/api";
 import { getPollingIntervalMs } from "@/lib/settings";
 import useAutoRefresh from "@/lib/useAutoRefresh";
@@ -39,14 +40,6 @@ export default function ActivityPage() {
         total: "Gjithsej",
         eventFilter: "Filtri i ngjarjeve",
         allEvents: "Të gjitha ngjarjet",
-        eventType: {
-          device_added: "Pajisje e shtuar",
-          device_removed: "Pajisje e hequr",
-          came_online: "U lidh",
-          went_offline: "Doli jashtë linje",
-          latency_spike: "Rritje e vonesës",
-          security_alert: "Alarm sigurie",
-        },
         onlyOnline: "Shfaq vetëm pajisjet në linjë",
         feedTitle: "Rrjedha e Ngjarjeve",
         loading: "Po ngarkohet pamja e aktivitetit...",
@@ -64,14 +57,6 @@ export default function ActivityPage() {
         total: "Total",
         eventFilter: "Event Filter",
         allEvents: "All events",
-        eventType: {
-          device_added: "Device added",
-          device_removed: "Device removed",
-          came_online: "Came online",
-          went_offline: "Went offline",
-          latency_spike: "Latency spike",
-          security_alert: "Security alert",
-        },
         onlyOnline: "Show only online devices",
         feedTitle: "Event Feed",
         loading: "Loading activity snapshot...",
@@ -202,12 +187,12 @@ export default function ActivityPage() {
             onChange={(event) => setEventFilter(event.target.value as "all" | ActivityEventType)}
           >
             <option value="all">{ui.allEvents}</option>
-            <option value="device_added">{ui.eventType.device_added}</option>
-            <option value="device_removed">{ui.eventType.device_removed}</option>
-            <option value="came_online">{ui.eventType.came_online}</option>
-            <option value="went_offline">{ui.eventType.went_offline}</option>
-            <option value="latency_spike">{ui.eventType.latency_spike}</option>
-            <option value="security_alert">{ui.eventType.security_alert}</option>
+            <option value="device_added">{getActivityEventLabel("device_added", isSq)}</option>
+            <option value="device_removed">{getActivityEventLabel("device_removed", isSq)}</option>
+            <option value="came_online">{getActivityEventLabel("came_online", isSq)}</option>
+            <option value="went_offline">{getActivityEventLabel("went_offline", isSq)}</option>
+            <option value="latency_spike">{getActivityEventLabel("latency_spike", isSq)}</option>
+            <option value="security_alert">{getActivityEventLabel("security_alert", isSq)}</option>
           </select>
           <label className="flex items-center gap-2 text-sm text-white/80">
             <input
@@ -237,12 +222,12 @@ export default function ActivityPage() {
             {filteredEvents.map((event) => (
               <div key={event.id} className="rounded-xl border border-white/10 bg-white/5 p-3">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-white">{ui.eventType[event.type]} - {event.deviceLabel}</p>
+                  <p className="text-sm font-semibold text-white">{getActivityEventLabel(event.type, isSq)} - {event.deviceLabel}</p>
                   <p className={`text-xs ${event.severity === "critical" ? "text-[color:var(--np-danger)]" : event.severity === "warn" ? "text-[color:var(--np-warn)]" : "text-white/50"}`}>
                     {new Date(event.timestamp).toLocaleTimeString()}
                   </p>
                 </div>
-                <p className="mt-1 text-sm text-white/70">{event.details}</p>
+                <p className="mt-1 text-sm text-white/70">{translateActivityDetails(event.details, isSq)}</p>
               </div>
             ))}
           </div>
